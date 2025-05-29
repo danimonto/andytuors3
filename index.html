@@ -25,7 +25,7 @@
       margin: 30px 0 10px;
     }
 
-    .timer-settings input, .timer-settings select {
+    .timer-settings input {
       padding: 6px;
       width: 60px;
       margin: 0 5px;
@@ -61,14 +61,12 @@
       box-sizing: border-box;
     }
 
-    .connector {
+    .curve {
       position: absolute;
       width: 20px;
       height: 20px;
       background: #4caf50;
       border-radius: 50%;
-      left: calc(100% - 20px);
-      bottom: -15px;
       z-index: 1;
     }
 
@@ -91,37 +89,40 @@
   <h1>Andy Tuors & Cia.</h1>
 
   <div class="timer-settings">
-    <label>Horas:</label>
-    <input type="number" id="hours" min="1" value="2">
-    <label>Minutos:</label>
-    <input type="number" id="minutes" min="0" max="59" value="0">
-    <label>Corredores:</label>
-    <select id="runnersCount">
-      <option value="1">1</option>
-      <option value="2">2</option>
-      <option value="3">3</option>
-    </select>
+    <label>Inicio:</label>
+    <input type="number" id="startHour" min="0" max="23" value="9">:
+    <input type="number" id="startMinute" min="0" max="59" value="0">
+    <label>Fin:</label>
+    <input type="number" id="endHour" min="0" max="23" value="17">:
+    <input type="number" id="endMinute" min="0" max="59" value="0">
     <button onclick="startRun()">Iniciar</button>
   </div>
 
-  <div id="countdown">00:02:00</div>
+  <div id="countdown">00:00:00</div>
 
   <div class="multi-track" id="multiTrack"></div>
 
   <script>
     let countdownInterval;
-    let totalDuration;
 
     function startRun() {
       const countdownDisplay = document.getElementById('countdown');
       const trackContainer = document.getElementById('multiTrack');
-      const hours = parseInt(document.getElementById('hours').value) || 0;
-      const minutes = parseInt(document.getElementById('minutes').value) || 0;
-      const runnerCount = parseInt(document.getElementById('runnersCount').value);
 
-      let totalSeconds = (hours * 60 + minutes) * 60;
-      if (totalSeconds === 0) return;
-      totalDuration = totalSeconds;
+      const startHour = parseInt(document.getElementById('startHour').value);
+      const startMinute = parseInt(document.getElementById('startMinute').value);
+      const endHour = parseInt(document.getElementById('endHour').value);
+      const endMinute = parseInt(document.getElementById('endMinute').value);
+
+      let startTime = new Date();
+      let endTime = new Date();
+      startTime.setHours(startHour, startMinute, 0);
+      endTime.setHours(endHour, endMinute, 0);
+
+      if (endTime <= startTime) return alert("El fin debe ser posterior al inicio");
+
+      const totalSeconds = Math.floor((endTime - startTime) / 1000);
+      const hours = Math.ceil(totalSeconds / 3600);
 
       clearInterval(countdownInterval);
       trackContainer.innerHTML = '';
@@ -129,7 +130,6 @@
       const rowHeight = 70;
       const trackWidth = trackContainer.offsetWidth - 60;
 
-      // Crear filas con conectores y marcadores de hora
       for (let i = 0; i < hours; i++) {
         const row = document.createElement('div');
         row.className = 'row';
@@ -141,20 +141,9 @@
         marker.innerText = `Hora ${i + 1}`;
         row.appendChild(marker);
 
-        if (i > 0) {
-          const connector = document.createElement('div');
-          connector.className = 'connector';
-          connector.style.left = i % 2 === 0 ? 'calc(100% - 20px)' : '0px';
-          connector.style.transform = 'translateY(-50%)';
-          row.appendChild(connector);
-        }
-
         trackContainer.appendChild(row);
       }
 
-      // Iconos de inicio y fin
-      const firstRow = trackContainer.children[0];
-      const lastRow = trackContainer.children[trackContainer.children.length - 1];
       const startIcon = document.createElement('div');
       startIcon.innerText = '🪑';
       startIcon.style.position = 'absolute';
@@ -169,46 +158,40 @@
       endIcon.style.top = ((hours - 1) * rowHeight + 10) + 'px';
       trackContainer.appendChild(endIcon);
 
-      // Crear corredores
-      for (let i = 0; i < runnerCount; i++) {
-        const runner = document.createElement('div');
-        runner.className = 'runner';
-        runner.id = 'runner' + i;
-        runner.innerText = '🏃';
-        runner.style.left = (10 + i * 20) + 'px';
-        runner.style.top = '10px';
-        runner.style.transform = 'scaleX(1)';
-        trackContainer.appendChild(runner);
-      }
-
-      let currentLine = 0;
-      let direction = 1;
-      let segmentTime = totalSeconds / (hours * 2 - 1); // incluye transiciones
+      const runner = document.createElement('div');
+      runner.className = 'runner';
+      runner.id = 'runner';
+      runner.innerText = '🏃';
+      runner.style.left = '10px';
+      runner.style.top = '10px';
+      runner.style.transform = 'scaleX(1)';
+      trackContainer.appendChild(runner);
 
       countdownDisplay.textContent = formatTime(totalSeconds);
+      let remaining = totalSeconds;
       countdownInterval = setInterval(() => {
-        totalSeconds--;
-        countdownDisplay.textContent = formatTime(totalSeconds);
-        if (totalSeconds === 5 * 60) alert("Vaya saludando");
-        if (totalSeconds <= 0) {
+        remaining--;
+        countdownDisplay.textContent = formatTime(remaining);
+        if (remaining === 5 * 60) alert("Vaya saludando");
+        if (remaining <= 0) {
           clearInterval(countdownInterval);
           alert("Rajemos");
         }
       }, 1000);
 
-      // Movimiento
+      let currentLine = 0;
+      let direction = 1;
+      let segmentTime = totalSeconds / (hours * 2 - 1);
+
       function moveNext() {
         if (currentLine >= hours) return;
         const left = direction === 1 ? (trackWidth) : 0;
         const top = currentLine * rowHeight + 10;
 
-        for (let i = 0; i < runnerCount; i++) {
-          const runner = document.getElementById('runner' + i);
-          runner.style.transition = `left ${segmentTime}s linear, top ${segmentTime}s linear`;
-          runner.style.left = (left + i * 20) + 'px';
-          runner.style.top = top + 'px';
-          runner.style.transform = direction === 1 ? 'scaleX(1)' : 'scaleX(-1)';
-        }
+        runner.style.transition = `left ${segmentTime}s linear, top ${segmentTime}s linear`;
+        runner.style.left = left + 'px';
+        runner.style.top = top + 'px';
+        runner.style.transform = direction === 1 ? 'scaleX(1)' : 'scaleX(-1)';
 
         direction *= -1;
         currentLine++;
