@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Andy Tuors & Cia.</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: start;
+    }
+
+    h1 {
+      margin-top: 40px;
+      font-size: 40px;
+      color: #333;
+      text-align: center;
+    }
+
+    .timer-settings {
+      margin: 30px 0 10px;
+    }
+
+    .timer-settings input {
+      padding: 6px;
+      width: 60px;
+      margin: 0 5px;
+    }
+
+    button {
+      padding: 8px 16px;
+      margin-left: 10px;
+      cursor: pointer;
+    }
+
+    #countdown {
+      font-size: 24px;
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .spiral-container {
+      position: relative;
+      width: 1080px;
+      height: 720px;
+      margin-bottom: 40px;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .runner {
+      position: absolute;
+      font-size: 30px;
+      transform: translate(-50%, -50%) scaleX(-1) rotate(0deg);
+      transition: transform 0.1s linear;
+    }
+
+    .icon {
+      position: absolute;
+      font-size: 32px;
+      transform: translate(-50%, -50%);
+    }
+
+    .hour-marker {
+      position: absolute;
+      font-size: 12px;
+      background: #fff;
+      padding: 2px 4px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      transform: translate(-50%, -50%);
+    }
+  </style>
+</head>
+<body>
+  <h1>Andy Tuors & Cia.</h1>
+
+  <div class="timer-settings">
+    <label>Inicio:</label>
+    <input type="number" id="startHour" min="0" max="23" value="8">:
+    <input type="number" id="startMinute" min="0" max="59" value="0">
+    <label>Fin:</label>
+    <input type="number" id="endHour" min="0" max="23" value="10">:
+    <input type="number" id="endMinute" min="0" max="59" value="0">
+    <button onclick="startRun()">Iniciar</button>
+  </div>
+
+  <div id="countdown">00:00:00</div>
+
+  <div class="spiral-container">
+    <svg id="spiralSVG">
+      <path id="spiralPath" d="" fill="none" stroke="#ddd" stroke-width="8" />
+      <path id="progressPath" d="" fill="none" stroke="#4caf50" stroke-width="8" />
+    </svg>
+    <div id="runner" class="runner">🏃</div>
+    <div id="startIcon" class="icon">🪑</div>
+    <div id="endIcon" class="icon">🚗</div>
+  </div>
+
+  <script>
+    function formatTime(totalSeconds) {
+      let hrs = Math.floor(totalSeconds / 3600);
+      let mins = Math.floor((totalSeconds % 3600) / 60);
+      let secs = totalSeconds % 60;
+      return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function generateRectangularSpiral(rects = 10, width = 1080, height = 720, padding = 20) {
+      let points = [];
+      for (let i = 0; i < rects; i++) {
+        let x = padding * i;
+        let y = padding * i;
+        let w = width - x * 2;
+        let h = height - y * 2;
+        points.push([x, y]);
+        points.push([x + w, y]);
+        points.push([x + w, y + h]);
+        points.push([x, y + h]);
+      }
+      let d = `M ${points[0][0]} ${points[0][1]} `;
+      for (let i = 1; i < points.length; i++) {
+        d += `L ${points[i][0]} ${points[i][1]} `;
+      }
+      return { d, points };
+    }
+
+    function startRun() {
+      const startHour = parseInt(document.getElementById('startHour').value);
+      const startMinute = parseInt(document.getElementById('startMinute').value);
+      const endHour = parseInt(document.getElementById('endHour').value);
+      const endMinute = parseInt(document.getElementById('endMinute').value);
+
+      const start = new Date();
+      start.setHours(startHour, startMinute, 0);
+      const end = new Date();
+      end.setHours(endHour, endMinute, 0);
+
+      let totalSeconds = Math.floor((end - start) / 1000);
+      if (totalSeconds <= 0) return alert("Hora de fin debe ser posterior a la de inicio");
+
+      let countdown = document.getElementById('countdown');
+      let interval = setInterval(() => {
+        if (totalSeconds <= 0) {
+          clearInterval(interval);
+          countdown.textContent = "00:00:00";
+          alert("Rajemos");
+        } else {
+          countdown.textContent = formatTime(totalSeconds);
+          if (totalSeconds === 300) alert("Vaya saludando");
+        }
+        totalSeconds--;
+      }, 1000);
+
+      const { d, points } = generateRectangularSpiral(10);
+      document.getElementById('spiralPath').setAttribute('d', d);
+
+      const runner = document.getElementById('runner');
+      const startIcon = document.getElementById('startIcon');
+      const endIcon = document.getElementById('endIcon');
+
+      startIcon.style.left = `${points[0][0]}px`;
+      startIcon.style.top = `${points[0][1]}px`;
+      endIcon.style.left = `${points[points.length - 1][0]}px`;
+      endIcon.style.top = `${points[points.length - 1][1]}px`;
+
+      let index = 0;
+      const totalFrames = points.length;
+      let progressPath = document.getElementById('progressPath');
+
+      // Marcas de horas
+      const durationPerSegment = (end - start) / totalFrames;
+      const svgContainer = document.querySelector(".spiral-container");
+      document.querySelectorAll('.hour-marker').forEach(el => el.remove());
+      let hoursToMark = Math.floor((end - start) / 3600000);
+      for (let i = 1; i <= hoursToMark; i++) {
+        let segmentIndex = Math.floor(i * 3600000 / durationPerSegment);
+        if (segmentIndex < points.length) {
+          let marker = document.createElement('div');
+          marker.className = 'hour-marker';
+          marker.textContent = `${i}h`;
+          marker.style.left = `${points[segmentIndex][0]}px`;
+          marker.style.top = `${points[segmentIndex][1]}px`;
+          svgContainer.appendChild(marker);
+        }
+      }
+
+      function animateRunner() {
+        if (index >= totalFrames) return;
+        let [x, y] = points[index];
+        runner.style.left = `${x}px`;
+        runner.style.top = `${y}px`;
+
+        // Rotación según dirección
+        if (index > 0) {
+          let [px, py] = points[index - 1];
+          let angle = Math.atan2(y - py, x - px) * 180 / Math.PI;
+          runner.style.transform = `translate(-50%, -50%) scaleX(-1) rotate(${angle}deg)`;
+        }
+
+        // Dibujar progreso
+        let partialPath = `M ${points[0][0]} ${points[0][1]} `;
+        for (let i = 1; i <= index; i++) {
+          partialPath += `L ${points[i][0]} ${points[i][1]} `;
+        }
+        progressPath.setAttribute('d', partialPath);
+
+        index++;
+        setTimeout(animateRunner, (totalSeconds * 1000) / totalFrames);
+      }
+
+      animateRunner();
+    }
+  </script>
+</body>
+</html>
